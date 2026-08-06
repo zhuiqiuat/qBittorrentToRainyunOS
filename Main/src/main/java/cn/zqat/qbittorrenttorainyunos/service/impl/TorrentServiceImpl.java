@@ -23,18 +23,14 @@ public class TorrentServiceImpl implements TorrentService {
     private SizeUtils szu;
 
     @Override
-    public Integer getTorrentCount() throws IOException {
-        String cookie = qbu.login();
-        int cnt = qbu.getTorrents(cookie,"downloading").size();
-        qbu.logout(cookie);
-        return cnt;
+    public Integer getTorrentCount() {
+        return qbu.getTorrents("all").size() - qbu.getTorrents("completed").size();
     }
 
     @Override
-    public List<TorrentResult> getTorrents() throws IOException {
+    public List<TorrentResult> getTorrents() {
         List<TorrentResult> list = new ArrayList<>();
-        String cookie = qbu.login();
-        for(Torrent torrent : qbu.getTorrents(cookie,"all")){
+        for(Torrent torrent : qbu.getTorrents("all")){
             TorrentResult tor = new TorrentResult();
             tor.setName(torrent.getName());
             tor.setDsize(szu.getSize(torrent.getDownloaded()));
@@ -42,22 +38,16 @@ public class TorrentServiceImpl implements TorrentService {
             tor.setProgress((int) (torrent.getProgress() * 100));
             tor.setSpeed(szu.getSize(torrent.getDlspeed()) + "/s");
             tor.setPeers(torrent.getNum_seeds() + " / " + torrent.getNum_complete());
-            if(torrent.getState().equals("stalledDL") || torrent.getState().equals("pausedDL") || torrent.getState().equals("queuedDL")){
-                tor.setStatus(0);
-            }else if(torrent.getState().equals("downloading") || torrent.getState().equals("forcedDL")){
-                tor.setStatus(1);
-            }else if(torrent.getState().equals("uploading") || torrent.getState().equals("stalledUP") || torrent.getState().equals("forcedUP")){
-                tor.setStatus(2);
-            }else if(torrent.getState().equals("error") || torrent.getState().equals("missingFiles") || torrent.getState().equals("unknown")) {
-                tor.setStatus(3);
-            }else if(torrent.getState().equals("pausedUP") || torrent.getState().equals("checkingUP") || torrent.getState().equals("queuedUP")){
-                tor.setStatus(5);
-            }else{
-                tor.setStatus(4);
+            switch (torrent.getState()) {
+                case "stalledDL", "pausedDL", "queuedDL" -> tor.setStatus(0);
+                case "downloading", "forcedDL" -> tor.setStatus(1);
+                case "uploading", "stalledUP", "forcedUP" -> tor.setStatus(2);
+                case "error", "missingFiles", "unknown" -> tor.setStatus(3);
+                case "pausedUP", "checkingUP", "queuedUP" -> tor.setStatus(5);
+                default -> tor.setStatus(4);
             }
             list.add(tor);
         }
-        qbu.logout(cookie);
         return list;
     }
 }

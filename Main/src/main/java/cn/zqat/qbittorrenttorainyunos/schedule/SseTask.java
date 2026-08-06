@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
-public class SSETask {
+public class SseTask {
 
     @Autowired
     private UploadService uploadService;

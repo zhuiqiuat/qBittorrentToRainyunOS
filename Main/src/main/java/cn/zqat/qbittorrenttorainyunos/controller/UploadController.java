@@ -1,6 +1,6 @@
 package cn.zqat.qbittorrenttorainyunos.controller;
 
-import cn.zqat.qbittorrenttorainyunos.schedule.SSETask;
+import cn.zqat.qbittorrenttorainyunos.schedule.SseTask;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class UploadController {
 
     @Autowired
-    private SSETask sseTask;
+    private SseTask sseTask;
 
     @GetMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter upload(Integer count){

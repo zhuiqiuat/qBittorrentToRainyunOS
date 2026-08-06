@@ -35,7 +35,6 @@ public class qBittorrentTask {
     @Scheduled(fixedDelay = 1000)
     public void task(){
         try {
-            String cookie = qbt.login();
             if(!q.isEmpty()){
                 Queue<MyFile> fail = new ArrayDeque<>();
                 for(MyFile file : q){
@@ -52,7 +51,7 @@ public class qBittorrentTask {
                 q.clear();
                 q = fail;
             }
-            List<Torrent> tmp = qbt.getTorrents(cookie,"completed");
+            List<Torrent> tmp = qbt.getTorrents("completed");
             List<Torrent> torrents = new ArrayList<>();
             List<String> rem = new ArrayList<>();
             for(Torrent torrent : tmp){
@@ -85,7 +84,9 @@ public class qBittorrentTask {
                 }
             }
             if(!rem.isEmpty()){
+                String cookie = qbt.login();
                 qbt.deleteTorrents(cookie,rem);
+                qbt.logout(cookie);
             }
             if(!torrents.isEmpty()){
                 os.uploadFiles(torrents);

@@ -13,6 +13,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -25,6 +26,9 @@ public class qBittorrentUtils {
 
     @Autowired
     private qBittorrentConfig config;
+
+    private List<Torrent> allTorrentList = new ArrayList<>();
+    private List<Torrent> completedTorrentList = new ArrayList<>();
 
     public String login() throws IOException {
         String nowurl = config.getUrl() + "/auth/login";
@@ -66,17 +70,13 @@ public class qBittorrentUtils {
         }
     }
 
-    public List<Torrent> getTorrents(String cookie,String filter) throws IOException {
-        String nowurl = config.getUrl() + "/torrents/info?filter=" + filter;
-        try (CloseableHttpClient client = HttpClients.createDefault()) {
-            ClassicHttpRequest getR = ClassicRequestBuilder.get(nowurl).build();
-            getR.addHeader("Cookie",cookie);
-            return client.execute(getR, response -> {
-                String json = EntityUtils.toString(response.getEntity());
-                Gson gson = new Gson();
-                return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
-            });
+    public List<Torrent> getTorrents(String filter) {
+        if(filter.equals("all")){
+            return allTorrentList;
+        }else if(filter.equals("completed")){
+            return completedTorrentList;
         }
+        return new ArrayList<>();
     }
 
     public void deleteTorrents(String cookie,List<String> hashes) throws IOException {
@@ -105,6 +105,29 @@ public class qBittorrentUtils {
                 return null;
             });
         }
+    }
+
+    @Scheduled(fixedDelay = 1000)
+    public void updateInfo() throws IOException {
+        String cookie = login();
+        String nowurl = config.getUrl() + "/torrents/info?filter=";
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            ClassicHttpRequest getallR = ClassicRequestBuilder.get(nowurl + "all").build();
+            ClassicHttpRequest getcompletedR = ClassicRequestBuilder.get(nowurl + "completed").build();
+            getallR.addHeader("Cookie",cookie);
+            getcompletedR.addHeader("Cookie",cookie);
+            allTorrentList = client.execute(getallR, response -> {
+                String json = EntityUtils.toString(response.getEntity());
+                Gson gson = new Gson();
+                return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
+            });
+            completedTorrentList = client.execute(getcompletedR, response -> {
+                String json = EntityUtils.toString(response.getEntity());
+                Gson gson = new Gson();
+                return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
+            });
+        }
+        logout(cookie);
     }
 
 }
