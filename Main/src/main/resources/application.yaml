@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: Main
+  datasource:
+    url: ""
+    username: ""
+    password: ""
+    driver-class-name: com.mysql.cj.jdbc.Driver
+rainyun:
+  endpoint: ""
+  bucketname: ""
+  accesskey: ""
+  secretkey: ""
+qbittorrent:
+  url: ""
+  username: ""
+  password: ""
