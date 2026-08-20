@@ -15,3 +15,6 @@ qbittorrent:
   url: ""
   username: ""
   password: ""
+jwt:
+  secret: ""
+  expiration: 1000
