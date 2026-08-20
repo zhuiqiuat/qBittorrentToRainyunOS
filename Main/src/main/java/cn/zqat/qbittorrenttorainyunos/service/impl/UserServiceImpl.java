@@ -31,7 +31,7 @@ public class UserServiceImpl implements UserService {
             if(u != null && u.getPassword().equals(password)){
                 String token = jwtu.getToken(u.getId(),username);
                 userMapper.updateToken(u.getId(), token);
-                return Result.suc(new LoginResult(u.getId(), u.getUsername(), token));
+                return Result.suc(new LoginResult(u.getId(), u.getUsername(), u.getAvatar(), token));
             }
         }
         return Result.err("用户名或者密码错误");

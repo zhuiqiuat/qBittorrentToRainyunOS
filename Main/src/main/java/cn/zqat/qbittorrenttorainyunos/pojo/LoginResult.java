@@ -11,6 +11,7 @@ public class LoginResult {
 
     private Integer id;
     private String username;
+    private String avatar;
     private String token;
 
 }

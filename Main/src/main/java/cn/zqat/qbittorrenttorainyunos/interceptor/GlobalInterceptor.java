@@ -27,7 +27,7 @@ public class GlobalInterceptor implements HandlerInterceptor {
             return false;
         }
         Claims claims = jwtu.extractAllClaims(token);
-        User u = usrs.getUserById((Integer) claims.get("id"));
+        User u = usrs.getUserById(Math.toIntExact((Long) claims.get("id")));
         if(u == null || !u.getToken().equals(token)){
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return false;

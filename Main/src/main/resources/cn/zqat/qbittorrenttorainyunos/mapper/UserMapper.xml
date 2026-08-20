@@ -8,11 +8,11 @@
     </update>
 
     <select id="getUserById" resultType="cn.zqat.qbittorrenttorainyunos.pojo.User">
-        select id,username,password,email,token from users where id = #{id}
+        select id,username,password,email,token,avatar from users where id = #{id}
     </select>
 
     <select id="getUserByUsername" resultType="cn.zqat.qbittorrenttorainyunos.pojo.User">
-        select id,username,password,email,token from users where username = #{username}
+        select id,username,password,email,token,avatar from users where username = #{username}
     </select>
 
 </mapper>
