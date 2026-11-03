@@ -38,7 +38,7 @@ public class UploadServiceImpl implements UploadService {
     }
 
     @Override
-    public List<UploadTorrentResult> getUploadList(Integer count) {
+    public List<UploadTorrentResult> getUploadList() {
         List<UploadTorrentResult> list = new ArrayList<>();
         for(Torrent torrent : qbtt.getMp().values()){
             UploadTorrentResult tor = new UploadTorrentResult();
@@ -87,11 +87,7 @@ public class UploadServiceImpl implements UploadService {
                 tor.setTspeed(szu.getSize((long) tspeed) + "/s");
                 tor.setTstatus(1);
             }
-            if(list.size() < count){
-                list.add(tor);
-            }else{
-                break;
-            }
+            list.add(tor);
         }
         return list;
     }

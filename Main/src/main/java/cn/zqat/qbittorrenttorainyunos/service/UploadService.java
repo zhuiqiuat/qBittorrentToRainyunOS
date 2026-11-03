@@ -7,5 +7,5 @@ import java.util.List;
 public interface UploadService {
     Integer getUploadCount();
 
-    List<UploadTorrentResult> getUploadList(Integer count);
+    List<UploadTorrentResult> getUploadList();
 }

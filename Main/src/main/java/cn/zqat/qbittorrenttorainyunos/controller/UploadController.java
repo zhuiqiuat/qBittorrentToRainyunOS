@@ -17,13 +17,8 @@ public class UploadController {
     private UploadService us;
 
     @GetMapping
-    public Result getUploads(Integer page,Integer size) {
-        return Result.suc(us.getUploadList(size));
-    }
-
-    @GetMapping("/count")
-    public Result getUploadCount() {
-        return Result.suc(us.getUploadCount());
+    public Result getUploads() {
+        return Result.suc(us.getUploadList());
     }
 
 }

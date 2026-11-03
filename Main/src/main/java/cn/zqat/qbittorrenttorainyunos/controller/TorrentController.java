@@ -8,9 +8,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-
-
 @RestController
 @Slf4j
 @RequestMapping("/torrent")
@@ -19,13 +16,8 @@ public class TorrentController {
     @Autowired
     private TorrentService tors;
 
-    @GetMapping("/count")
-    public Result getTorrentCount() throws IOException {
-        return Result.suc(tors.getTorrentCount());
-    }
-
     @GetMapping
-    public Result getTorrents(Integer page,Integer size) throws IOException {
+    public Result getTorrents(){
         return Result.suc(tors.getTorrents());
     }
 

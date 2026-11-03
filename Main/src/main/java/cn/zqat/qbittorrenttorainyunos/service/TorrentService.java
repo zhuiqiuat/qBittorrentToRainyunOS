@@ -2,13 +2,12 @@ package cn.zqat.qbittorrenttorainyunos.service;
 
 import cn.zqat.qbittorrenttorainyunos.pojo.TorrentResult;
 
-import java.io.IOException;
 import java.util.List;
 
 public interface TorrentService {
 
-    Integer getTorrentCount() throws IOException;
+    Integer getTorrentCount();
 
-    List<TorrentResult> getTorrents() throws IOException;
+    List<TorrentResult> getTorrents();
 
 }
