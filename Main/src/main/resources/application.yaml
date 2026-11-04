@@ -18,3 +18,8 @@ qbittorrent:
 jwt:
   secret: ""
   expiration: 1000
+mybatis:
+  # 启用驼峰命名映射
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true

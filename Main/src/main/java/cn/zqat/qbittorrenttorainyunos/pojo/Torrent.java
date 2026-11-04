@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,4 +27,7 @@ public class Torrent {
     private Integer num_complete;
     private List<MyFile> files = new ArrayList<>();
     private AtomicInteger unCompletedCnt = new AtomicInteger(0);
+    private LocalDateTime updateTime;
+    private Integer status;
+    private Long size;
 }

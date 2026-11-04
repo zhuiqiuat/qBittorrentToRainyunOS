@@ -2,6 +2,7 @@ package cn.zqat.qbittorrenttorainyunos.schedule;
 
 import cn.zqat.qbittorrenttorainyunos.pojo.MyFile;
 import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
+import cn.zqat.qbittorrenttorainyunos.service.RecordService;
 import cn.zqat.qbittorrenttorainyunos.utils.RainyunOSUtils;
 import cn.zqat.qbittorrenttorainyunos.utils.qBittorrentUtils;
 import lombok.Data;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -28,6 +30,9 @@ public class qBittorrentTask {
 
     @Autowired
     private RainyunOSUtils os;
+
+    @Autowired
+    private RecordService recordService;
 
     private Map<String,Torrent> mp = new ConcurrentHashMap<>();
     private Queue<MyFile> q = new ArrayDeque<>();
@@ -60,6 +65,10 @@ public class qBittorrentTask {
                     if(now.getUnCompletedCnt().get() == 0){
                         q.addAll(now.getFiles());
                         rem.add(now.getHash());
+                        now.setSize(now.getTotal_size());
+                        now.setStatus(5);
+                        now.setUpdateTime(LocalDateTime.now());
+                        recordService.add(now);
                         mp.remove(now.getHash());
                     }else{
                         torrents.add(now);
