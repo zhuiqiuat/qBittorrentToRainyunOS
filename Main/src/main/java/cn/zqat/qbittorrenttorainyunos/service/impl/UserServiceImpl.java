@@ -9,6 +9,7 @@ import cn.zqat.qbittorrenttorainyunos.service.UserService;
 import cn.zqat.qbittorrenttorainyunos.utils.JWTUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -28,7 +29,7 @@ public class UserServiceImpl implements UserService {
             if(password == null || password.isEmpty()){
                 return Result.err("密码不能为空");
             }
-            if(u != null && u.getPassword().equals(password)){
+            if(u != null && u.getPassword().equals(DigestUtils.md5DigestAsHex(password.getBytes()))){
                 String token = jwtu.getToken(u.getId(),username);
                 userMapper.updateToken(u.getId(), token);
                 return Result.suc(new LoginResult(u.getId(), u.getUsername(), u.getAvatar(), token));
