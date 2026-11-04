@@ -41,7 +41,7 @@ public class RainyunOSUtils {
                 if(file.getStatus() == 1 || file.getStatus() == 2){
                     continue;
                 }
-                if(cnt < 3){
+                if(cnt < 5){
                     upload(file,torrent);
                 }
             }
