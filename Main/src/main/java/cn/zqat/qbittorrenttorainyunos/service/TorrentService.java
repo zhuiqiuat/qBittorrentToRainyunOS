@@ -1,13 +1,13 @@
 package cn.zqat.qbittorrenttorainyunos.service;
 
-import cn.zqat.qbittorrenttorainyunos.pojo.TorrentResult;
+import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
 
 import java.util.List;
 
 public interface TorrentService {
 
-    Integer getTorrentCount();
+    Integer getDownloadCount();
 
-    List<TorrentResult> getTorrents();
+    List<Torrent> getDownloadList();
 
 }

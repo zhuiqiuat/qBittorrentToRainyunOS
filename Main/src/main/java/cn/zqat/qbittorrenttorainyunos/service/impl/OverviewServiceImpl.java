@@ -17,6 +17,6 @@ public class OverviewServiceImpl implements OverviewService {
     private UploadService uploadService;
 
     public Overview getOverview() {
-        return new Overview(torrentService.getTorrentCount(), uploadService.getUploadCount(),uploadService.getUploadList());
+        return new Overview(torrentService.getDownloadCount(), uploadService.getUploadCount(),uploadService.getUploadList());
     }
 }
