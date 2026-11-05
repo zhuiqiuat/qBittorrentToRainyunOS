@@ -2,7 +2,6 @@ package cn.zqat.qbittorrenttorainyunos.service.impl;
 
 import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
 import cn.zqat.qbittorrenttorainyunos.service.TorrentService;
-import cn.zqat.qbittorrenttorainyunos.utils.SizeUtils;
 import cn.zqat.qbittorrenttorainyunos.utils.qBittorrentUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +15,6 @@ public class TorrentServiceImpl implements TorrentService {
 
     @Autowired
     private qBittorrentUtils qbu;
-    @Autowired
-    private SizeUtils szu;
 
     public Integer getDownloadCount() {
         return qbu.getTorrents("all").size() - qbu.getTorrents("completed").size();

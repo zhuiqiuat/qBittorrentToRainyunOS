@@ -30,4 +30,5 @@ public class Torrent {
     private LocalDateTime updateTime;
     private Integer status;
     private Long size;
+    private Integer progressPercent;
 }
