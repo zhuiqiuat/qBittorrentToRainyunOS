@@ -13,7 +13,6 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -26,9 +25,6 @@ public class qBittorrentUtils {
 
     @Autowired
     private qBittorrentConfig config;
-
-    private List<Torrent> allTorrentList = new ArrayList<>();
-    private List<Torrent> completedTorrentList = new ArrayList<>();
 
     public String login() throws IOException {
         String nowurl = config.getUrl() + "/auth/login";
@@ -71,10 +67,23 @@ public class qBittorrentUtils {
     }
 
     public List<Torrent> getTorrents(String filter) {
-        if(filter.equals("all")){
-            return allTorrentList;
-        }else if(filter.equals("completed")){
-            return completedTorrentList;
+        try {
+            String cookie = login();
+            String nowurl = config.getUrl() + "/torrents/info?filter=";
+            List<Torrent> torrentList;
+            try (CloseableHttpClient client = HttpClients.createDefault()) {
+                ClassicHttpRequest getReq = ClassicRequestBuilder.get(nowurl + filter).build();
+                getReq.addHeader("Cookie",cookie);
+                    torrentList = client.execute(getReq, response -> {
+                    String json = EntityUtils.toString(response.getEntity());
+                    Gson gson = new Gson();
+                    return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
+                });
+            }
+            logout(cookie);
+            return torrentList;
+        } catch (IOException e) {
+            log.error("获取类型为 {} 的种子列表时出错",filter);
         }
         return new ArrayList<>();
     }
@@ -106,28 +115,4 @@ public class qBittorrentUtils {
             });
         }
     }
-
-    @Scheduled(fixedDelay = 1000)
-    public void updateInfo() throws IOException {
-        String cookie = login();
-        String nowurl = config.getUrl() + "/torrents/info?filter=";
-        try (CloseableHttpClient client = HttpClients.createDefault()) {
-            ClassicHttpRequest getallR = ClassicRequestBuilder.get(nowurl + "all").build();
-            ClassicHttpRequest getcompletedR = ClassicRequestBuilder.get(nowurl + "completed").build();
-            getallR.addHeader("Cookie",cookie);
-            getcompletedR.addHeader("Cookie",cookie);
-            allTorrentList = client.execute(getallR, response -> {
-                String json = EntityUtils.toString(response.getEntity());
-                Gson gson = new Gson();
-                return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
-            });
-            completedTorrentList = client.execute(getcompletedR, response -> {
-                String json = EntityUtils.toString(response.getEntity());
-                Gson gson = new Gson();
-                return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
-            });
-        }
-        logout(cookie);
-    }
-
 }
