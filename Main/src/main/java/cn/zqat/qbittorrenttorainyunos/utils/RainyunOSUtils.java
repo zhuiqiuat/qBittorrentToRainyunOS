@@ -38,7 +38,7 @@ public class RainyunOSUtils {
     public void uploadFiles(List<Torrent> torrents){
         for(Torrent torrent : torrents){
             for(MyFile file : torrent.getFiles()){
-                if(file.getStatus() != 4){
+                if(file.getStatus() != 4 && file.getStatus() != 7){
                     continue;
                 }
                 if(cnt < 5){
