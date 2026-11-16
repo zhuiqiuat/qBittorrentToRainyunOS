@@ -19,9 +19,11 @@ public class Torrent {
     private String root_path;
     private String state;
     private String save_path;
-    private Integer dlspeed;
+    private Long dlspeed;
+    private Long upspeed;
     private Double progress;
     private Long downloaded;
+    private Long uploaded;
     private Long total_size;
     private Integer num_seeds;
     private Integer num_complete;

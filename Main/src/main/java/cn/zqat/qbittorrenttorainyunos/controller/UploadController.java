@@ -1,7 +1,7 @@
 package cn.zqat.qbittorrenttorainyunos.controller;
 
 import cn.zqat.qbittorrenttorainyunos.pojo.Result;
-import cn.zqat.qbittorrenttorainyunos.service.UploadService;
+import cn.zqat.qbittorrenttorainyunos.service.TorrentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class UploadController {
 
     @Autowired
-    private UploadService us;
+    private TorrentService torrentService;
 
     @GetMapping
     public Result getUploads() {
-        return Result.suc(us.getUploadList());
+        return Result.suc(torrentService.getUploadList());
     }
 
 }

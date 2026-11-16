@@ -11,10 +11,20 @@ import java.nio.file.Path;
 @NoArgsConstructor
 public class MyFile {
     private String prefix;
+    private String name;
     private Path path;
     private Integer status;
-    private Long startTime;
-    private Long totalbytes;
-    private Long sendedbytes;
-    private Integer progress;
+    private Long startTime = 0L;
+    private Long totalBytes;
+    private Long sentBytes = 0L;
+    private Integer progress = 0;
+    private Long speed = 0L;
+    private String bucket;
+
+    public MyFile(String prefix, Path path, int status, long totalBytes) {
+        this.prefix = prefix;
+        this.path = path;
+        this.status = status;
+        this.totalBytes = totalBytes;
+    }
 }

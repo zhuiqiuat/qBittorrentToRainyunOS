@@ -1,12 +1,15 @@
 package cn.zqat.qbittorrenttorainyunos.service.impl;
 
+import cn.zqat.qbittorrenttorainyunos.pojo.MyFile;
 import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
+import cn.zqat.qbittorrenttorainyunos.schedule.qBittorrentTask;
 import cn.zqat.qbittorrenttorainyunos.service.TorrentService;
 import cn.zqat.qbittorrenttorainyunos.utils.qBittorrentUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -16,7 +19,10 @@ public class TorrentServiceImpl implements TorrentService {
     @Autowired
     private qBittorrentUtils qbu;
 
-    public Integer getDownloadCount() {
+    @Autowired
+    private qBittorrentTask qbtt;
+
+    public Integer getActiveDownloadCount() {
         return qbu.getTorrents("all").size() - qbu.getTorrents("completed").size();
     }
 
@@ -25,14 +31,29 @@ public class TorrentServiceImpl implements TorrentService {
         for(Torrent torrent : list){
             torrent.setProgressPercent((int) (torrent.getProgress() * 100));
             switch (torrent.getState()) {
-                case "stalledDL", "pausedDL", "queuedDL" -> torrent.setStatus(0);
-                case "downloading", "forcedDL" -> torrent.setStatus(1);
-                case "uploading", "stalledUP", "forcedUP" -> torrent.setStatus(2);
-                case "error", "missingFiles", "unknown" -> torrent.setStatus(3);
-                case "pausedUP", "checkingUP", "queuedUP" -> torrent.setStatus(5);
-                default -> torrent.setStatus(4);
+                case "stalledDL", "pausedDL", "queuedDL" -> torrent.setStatus(1);
+                case "downloading", "forcedDL" -> torrent.setStatus(2);
+                case "uploading", "stalledUP", "forcedUP" -> torrent.setStatus(3);
+                case "error", "missingFiles", "unknown" -> torrent.setStatus(7);
+                default -> torrent.setStatus(0);
             }
         }
         return list;
+    }
+
+    @Override
+    public Integer getActiveUploadCount() {
+        Integer cnt = 0;
+        for(Torrent torrent : qbtt.getHashTorrents().values()){
+            if(torrent.getStatus() == 5){
+                cnt++;
+            }
+        }
+        return cnt;
+    }
+
+    @Override
+    public List<Torrent> getUploadList() {
+        return (List<Torrent>) qbtt.getHashTorrents().values();
     }
 }

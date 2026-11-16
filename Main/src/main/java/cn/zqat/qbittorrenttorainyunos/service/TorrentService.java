@@ -6,8 +6,12 @@ import java.util.List;
 
 public interface TorrentService {
 
-    Integer getDownloadCount();
+    Integer getActiveDownloadCount();
 
     List<Torrent> getDownloadList();
+
+    Integer getActiveUploadCount();
+
+    List<Torrent> getUploadList();
 
 }

@@ -12,5 +12,5 @@ import java.util.List;
 public class Overview {
     private Integer torrentCount;
     private Integer uploadCount;
-    private List<UploadTorrentResult> uploadList;
+    private List<Torrent> uploadList;
 }
