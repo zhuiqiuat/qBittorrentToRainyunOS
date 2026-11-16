@@ -34,7 +34,7 @@ public class qBittorrentTask {
     @Autowired
     private RecordService recordService;
 
-    private Map<String,Torrent> mp = new ConcurrentHashMap<>();
+    private Map<String,Torrent> hashTorrents = new ConcurrentHashMap<>();
     private Queue<MyFile> q = new ArrayDeque<>();
 
     @Scheduled(fixedDelay = 1000)
@@ -60,17 +60,50 @@ public class qBittorrentTask {
             List<Torrent> torrents = new ArrayList<>();
             List<String> rem = new ArrayList<>();
             for(Torrent torrent : tmp){
-                if(mp.containsKey(torrent.getHash())){
-                    Torrent now = mp.get(torrent.getHash());
+                if(hashTorrents.containsKey(torrent.getHash())){
+                    Torrent now = hashTorrents.get(torrent.getHash());
                     if(now.getUnCompletedCnt().get() == 0){
                         q.addAll(now.getFiles());
                         rem.add(now.getHash());
                         now.setSize(now.getTotal_size());
-                        now.setStatus(5);
+                        now.setStatus(6);
                         now.setUpdateTime(LocalDateTime.now());
                         recordService.add(now);
-                        mp.remove(now.getHash());
+                        hashTorrents.remove(now.getHash());
                     }else{
+                        long tusize = 0;
+                        double tspeed = 0;
+                        int watting = 0;
+                        int uploading = 0;
+                        int uploaded = 0;
+                        for(MyFile file : torrent.getFiles()){
+                            file.setName(file.getPath().getFileName().toString());
+                            tusize += file.getSentBytes();
+                            long time = System.currentTimeMillis();
+                            if(file.getStatus() == 4){
+                                file.setSpeed(0L);
+                                watting++;
+                            }else if(file.getStatus() == 5){
+                                double speed = (double) file.getSentBytes() * 1000 / (time - file.getStartTime());
+                                file.setSpeed((long) speed);
+                                tspeed += speed;
+                                uploading++;
+                            }else if(file.getStatus() == 6){
+                                file.setSpeed(0L);
+                                uploaded++;
+                            }
+                        }
+                        torrent.setUploaded(tusize);
+                        torrent.setProgressPercent((int) (tusize * 100 / torrent.getTotal_size()));
+                        torrent.setUpspeed(-1L);
+                        if(uploaded == 0 && uploading == 0){
+                            torrent.setStatus(4);
+                        }else if(uploading == 0 && watting == 0){
+                            torrent.setStatus(6);
+                        }else{
+                            torrent.setUpspeed((long) tspeed);
+                            torrent.setStatus(5);
+                        }
                         torrents.add(now);
                     }
                 }else{
@@ -80,7 +113,7 @@ public class qBittorrentTask {
                             String prefix = cpath.length >= 3 ? cpath[2] : "";
                             MyFile myFile = null;
                             try {
-                                myFile = new MyFile(prefix,path,0,0L, Files.size(path),0L,0);
+                                myFile = new MyFile(prefix,path,4, Files.size(path));
                             } catch (IOException e) {
                                 log.error(e.getMessage());
                             }
@@ -88,7 +121,7 @@ public class qBittorrentTask {
                         });
                     }
                     torrent.getUnCompletedCnt().set(torrent.getFiles().size());
-                    mp.put(torrent.getHash(),torrent);
+                    hashTorrents.put(torrent.getHash(),torrent);
                     torrents.add(torrent);
                 }
             }

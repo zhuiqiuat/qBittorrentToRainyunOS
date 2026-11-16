@@ -38,7 +38,7 @@ public class RainyunOSUtils {
     public void uploadFiles(List<Torrent> torrents){
         for(Torrent torrent : torrents){
             for(MyFile file : torrent.getFiles()){
-                if(file.getStatus() == 1 || file.getStatus() == 2){
+                if(file.getStatus() != 4){
                     continue;
                 }
                 if(cnt < 5){
@@ -66,18 +66,18 @@ public class RainyunOSUtils {
             public void transferInitiated(Context.TransferInitiated context) {
                 log.info("{} 开始上传",finalKey);
                 file.setStartTime(System.currentTimeMillis());
-                if(file.getStatus() != 1){
+                if(file.getStatus() != 5){
                     cnt++;
-                    file.setStatus(1);
+                    file.setStatus(5);
                 }
             }
 
             @Override
             public void bytesTransferred(Context.BytesTransferred context) {
-                if(file.getSendedbytes() > context.progressSnapshot().transferredBytes()){
+                if(file.getSentBytes() > context.progressSnapshot().transferredBytes()){
                     file.setStartTime(System.currentTimeMillis());
                 }
-                file.setSendedbytes(context.progressSnapshot().transferredBytes());
+                file.setSentBytes(context.progressSnapshot().transferredBytes());
                 file.setProgress((int) (context.progressSnapshot().ratioTransferred().orElse(0) * 100));
             }
 
@@ -85,7 +85,7 @@ public class RainyunOSUtils {
             public void transferComplete(Context.TransferComplete context) {
                 log.info("{} 上传成功",finalKey);
                 torrent.getUnCompletedCnt().decrementAndGet();
-                file.setStatus(2);
+                file.setStatus(6);
                 cnt--;
                 s3tm.close();
             }
@@ -93,9 +93,9 @@ public class RainyunOSUtils {
             @Override
             public void transferFailed(Context.TransferFailed context) {
                 cnt--;
-                file.setStatus(3);
+                file.setStatus(7);
                 file.setProgress(0);
-                file.setSendedbytes(0L);
+                file.setSentBytes(0L);
                 log.error("{} 上传失败,将在 1 秒内重试",finalKey);
                 Throwable e = context.exception();
                 log.error("失败原因: {}",e.getMessage());
