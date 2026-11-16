@@ -10,7 +10,7 @@ import java.util.List;
 @Mapper
 public interface RecordMapper {
 
-    @Insert("insert into record (name,size,status,update_time) values (#{name},#{size},#{status},#{updateTime})")
+    @Insert("insert into record (name,size,update_time) values (#{name},#{size},#{updateTime})")
     void insert(Torrent torrent);
 
 
