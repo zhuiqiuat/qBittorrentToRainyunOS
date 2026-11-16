@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
+import java.util.Collection;
 
 @Data
 @NoArgsConstructor
@@ -12,5 +12,5 @@ import java.util.List;
 public class Overview {
     private Integer torrentCount;
     private Integer uploadCount;
-    private List<Torrent> uploadList;
+    private Collection<Torrent> uploadList;
 }

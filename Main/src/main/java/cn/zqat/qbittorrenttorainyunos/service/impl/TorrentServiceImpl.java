@@ -1,6 +1,5 @@
 package cn.zqat.qbittorrenttorainyunos.service.impl;
 
-import cn.zqat.qbittorrenttorainyunos.pojo.MyFile;
 import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
 import cn.zqat.qbittorrenttorainyunos.schedule.qBittorrentTask;
 import cn.zqat.qbittorrenttorainyunos.service.TorrentService;
@@ -9,7 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -53,7 +52,7 @@ public class TorrentServiceImpl implements TorrentService {
     }
 
     @Override
-    public List<Torrent> getUploadList() {
-        return (List<Torrent>) qbtt.getHashTorrents().values();
+    public Collection<Torrent> getUploadList() {
+        return qbtt.getHashTorrents().values();
     }
 }

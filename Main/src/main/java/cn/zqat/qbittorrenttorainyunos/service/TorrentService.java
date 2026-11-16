@@ -2,6 +2,7 @@ package cn.zqat.qbittorrenttorainyunos.service;
 
 import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface TorrentService {
@@ -12,6 +13,6 @@ public interface TorrentService {
 
     Integer getActiveUploadCount();
 
-    List<Torrent> getUploadList();
+    Collection<Torrent> getUploadList();
 
 }
