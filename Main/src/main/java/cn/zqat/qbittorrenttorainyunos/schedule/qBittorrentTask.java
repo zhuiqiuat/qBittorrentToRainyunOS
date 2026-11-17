@@ -71,12 +71,10 @@ public class qBittorrentTask {
                         recordService.add(now);
                         hashTorrents.remove(now.getHash());
                     }else{
-                        long tusize = 0;
                         double tspeed = 0;
                         int uploading = 0;
                         for(MyFile file : now.getFiles()){
                             file.setName(file.getPath().getFileName().toString());
-                            tusize += file.getSentBytes();
                             long time = System.currentTimeMillis();
                             if(file.getStatus() == 4 || file.getStatus() == 7){
                                 file.setSpeed(0L);
@@ -89,8 +87,7 @@ public class qBittorrentTask {
                                 file.setSpeed(0L);
                             }
                         }
-                        now.setUploaded(tusize);
-                        now.setProgressPercent((int) (tusize * 100 / now.getTotal_size()));
+                        now.setProgressPercent((int) (now.getUploaded() * 100 / now.getTotal_size()));
                         now.setUpspeed(-1L);
                         if(uploading == 0){
                             now.setStatus(4);
@@ -114,6 +111,7 @@ public class qBittorrentTask {
                             torrent.getFiles().add(myFile);
                         });
                     }
+                    torrent.setUploaded(0L);
                     torrent.setStatus(4);
                     torrent.getUnCompletedCnt().set(torrent.getFiles().size());
                     hashTorrents.put(torrent.getHash(),torrent);

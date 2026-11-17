@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.FileUpload;
 import software.amazon.awssdk.transfer.s3.progress.TransferListener;
+import software.amazon.awssdk.transfer.s3.progress.TransferProgressSnapshot;
 
 import java.net.URI;
 import java.util.List;
@@ -74,11 +75,14 @@ public class RainyunOSUtils {
 
             @Override
             public void bytesTransferred(Context.BytesTransferred context) {
-                if(file.getSentBytes() > context.progressSnapshot().transferredBytes()){
+                TransferProgressSnapshot snapshot = context.progressSnapshot();
+                long transferredBytes = snapshot.transferredBytes();
+                if(file.getSentBytes() > transferredBytes){
                     file.setStartTime(System.currentTimeMillis());
                 }
-                file.setSentBytes(context.progressSnapshot().transferredBytes());
-                file.setProgress((int) (context.progressSnapshot().ratioTransferred().orElse(0) * 100));
+                torrent.setUploaded(torrent.getUploaded() + transferredBytes - file.getSentBytes());
+                file.setSentBytes(transferredBytes);
+                file.setProgress((int) (snapshot.ratioTransferred().orElse(0) * 100));
             }
 
             @Override
@@ -93,6 +97,7 @@ public class RainyunOSUtils {
             @Override
             public void transferFailed(Context.TransferFailed context) {
                 cnt--;
+                torrent.setUploaded(torrent.getUploaded() - file.getSentBytes());
                 file.setStatus(7);
                 file.setProgress(0);
                 file.setSentBytes(0L);
