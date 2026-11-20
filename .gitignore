@@ -3,4 +3,11 @@
 .idea/
 *.iml
 
+# 日志（根目录和模块目录都排除）
+logs/
 Main/logs/
+
+# 本地真实配置：只提交 application.yaml 的占位版本，真实凭据放这里
+application-local.yaml
+application-local.yml
+application-prod.yaml
