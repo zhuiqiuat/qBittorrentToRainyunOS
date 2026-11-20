@@ -1,25 +1,51 @@
+# ============================================================
+# 本地开发默认值：全部支持环境变量覆盖（语法 ${ENV_KEY:默认值}）
+# 生产环境请用环境变量或 application-local.yaml 覆盖，切勿提交真实凭据
+# ============================================================
+
+server:
+  # 默认 8081，避开 qBittorrent WebUI 默认的 8080
+  port: ${SERVER_PORT:8081}
+
 spring:
   application:
     name: Main
   datasource:
-    url: ""
-    username: ""
-    password: ""
+    # serverTimezone / useSSL / allowPublicKeyRetrieval 按自己的 MySQL 版本调整
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/qbt2s3?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: qbt-pool
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      # 连不上时快速失败，别让定时任务线程一直卡在连接上
+      connection-timeout: 5000
+
+# ---- 对象存储（S3 协议兼容：Rainyun / MinIO / AWS S3 均可）----
 rainyun:
-  endpoint: ""
-  bucketname: ""
-  accesskey: ""
-  secretkey: ""
+  endpoint: ${S3_ENDPOINT:https://s3.example.com}
+  bucketname: ${S3_BUCKET:qbt-archive}
+  accesskey: ${S3_ACCESS_KEY:}
+  secretkey: ${S3_SECRET_KEY:}
+
+# ---- qBittorrent WebUI ----
 qbittorrent:
-  url: ""
-  username: ""
-  password: ""
+  url: ${QB_URL:http://127.0.0.1:8080}
+  username: ${QB_USERNAME:admin}
+  password: ${QB_PASSWORD:adminadmin}
+
+# ---- 认证 ----
 jwt:
-  secret: ""
-  expiration: 1000
+  # HS256 密钥：Base64 编码，解码后长度必须 ≥ 32 字节（否则启动后首次登录抛异常）
+  # 下面这条仅供本地开发，线上必须用 JWT_SECRET 覆盖
+  secret: ${JWT_SECRET:+XEx9EMd4tP4S4R6PO0bIx/huMrk97JtOuOKdD6DJbk=}
+  # token 有效期（毫秒），默认 7 天
+  expiration: ${JWT_EXPIRATION_MS:604800000}
+
+# ---- MyBatis ----
 mybatis:
-  # 启用驼峰命名映射
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 启用驼峰命名映射（update_time -> updateTime）
     map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
