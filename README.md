@@ -129,9 +129,9 @@ mvn -DskipTests package && java -jar target/qBittorrentToRainyunOS-1.1.0.jar
 | 方法 | 路径 | 鉴权 | 说明 |
 |---|---|---|---|
 | POST | `/login` | 否 | 用户名密码换取 token |
-| GET | `/overview` | 是 | 活跃下载数、活跃上传数、上传列表 |
+| GET | `/overview` | 是 | 活跃下载数、活跃上传数、上传及上传失败列表 |
 | GET | `/download` | 是 | 全部种子及下载状态 |
-| GET | `/upload` | 是 | 正在上传的种子 |
+| GET | `/upload` | 是 | 正在上传及上传失败的种子 |
 | GET | `/record` | 是 | 历史传输记录 |
 
 鉴权方式：请求头 `token: <jwt>`，未通过返回 `401`。
@@ -156,10 +156,10 @@ curl -s http://127.0.0.1:8081/overview -H "token: $TOKEN"
 | 1 | 等待、暂停 | `stalledDL` `pausedDL` `queuedDL` |
 | 2 | 下载中 | `downloading` `forcedDL` |
 | 3 | 已完成（做种中） | `uploading` `stalledUP` `forcedUP` `queuedUP` `checkingUP` `stoppedUP` |
-| 7 | 异常 | `error` `missingFiles` `unknown` |
+| 7 | 下载失败 | `error` `missingFiles` `unknown` |
 
-上传阶段（`Torrent.status`）：`4` 待上传 / `5` 上传中 / `6` 已完成（已写入 record）。
-文件级（`MyFile.status`）：`4` 等待 / `5` 上传中 / `6` 完成 / `7` 失败（下一轮重试）。
+上传阶段（`Torrent.status`）：`4` 待上传 / `5` 上传中 / `6` 已完成（已写入 record） / `8` 上传失败（下一轮重试）。
+文件级（`MyFile.status`）：`4` 等待 / `5` 上传中 / `6` 完成 / `8` 上传失败（下一轮重试）。
 
 ## 设计要点与踩过的坑
 
