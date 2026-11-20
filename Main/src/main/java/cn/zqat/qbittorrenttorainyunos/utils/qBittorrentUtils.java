@@ -66,26 +66,21 @@ public class qBittorrentUtils {
         }
     }
 
-    public List<Torrent> getTorrents(String filter) {
-        try {
-            String cookie = login();
-            String nowurl = config.getUrl() + "/torrents/info?filter=";
-            List<Torrent> torrentList;
-            try (CloseableHttpClient client = HttpClients.createDefault()) {
-                ClassicHttpRequest getReq = ClassicRequestBuilder.get(nowurl + filter).build();
-                getReq.addHeader("Cookie",cookie);
-                    torrentList = client.execute(getReq, response -> {
-                    String json = EntityUtils.toString(response.getEntity());
-                    Gson gson = new Gson();
-                    return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
-                });
-            }
-            logout(cookie);
-            return torrentList;
+    public List<Torrent> getTorrents(String filter,String cookie) {
+        String nowurl = config.getUrl() + "/torrents/info?filter=";
+        List<Torrent> torrentList = new ArrayList<>();
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            ClassicHttpRequest getReq = ClassicRequestBuilder.get(nowurl + filter).build();
+            getReq.addHeader("Cookie",cookie);
+            torrentList = client.execute(getReq, response -> {
+                String json = EntityUtils.toString(response.getEntity());
+                Gson gson = new Gson();
+                return gson.fromJson(json, new TypeToken<List<Torrent>>() {}.getType());
+            });
         } catch (IOException e) {
             log.error("获取类型为 {} 的种子列表时出错",filter);
         }
-        return new ArrayList<>();
+        return torrentList;
     }
 
     public void deleteTorrents(String cookie,List<String> hashes) throws IOException {

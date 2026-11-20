@@ -40,6 +40,7 @@ public class qBittorrentTask {
     @Scheduled(fixedDelay = 1000)
     public void task(){
         try {
+            String cookie = qbt.login();
             if(!q.isEmpty()){
                 Queue<MyFile> fail = new ArrayDeque<>();
                 for(MyFile file : q){
@@ -56,12 +57,50 @@ public class qBittorrentTask {
                 q.clear();
                 q = fail;
             }
-            List<Torrent> tmp = qbt.getTorrents("completed");
+            List<Torrent> tmp = qbt.getTorrents("all",cookie);
             List<Torrent> torrents = new ArrayList<>();
             List<String> rem = new ArrayList<>();
             for(Torrent torrent : tmp){
-                if(hashTorrents.containsKey(torrent.getHash())){
-                    Torrent now = hashTorrents.get(torrent.getHash());
+                switch (torrent.getState()) {
+                    case "stalledDL", "pausedDL", "queuedDL" -> torrent.setStatus(1);
+                    case "downloading", "forcedDL" -> torrent.setStatus(2);
+                    case "uploading", "stalledUP", "forcedUP", "queuedUP", "checkingUP", "stoppedUP" -> torrent.setStatus(3);
+                    case "error", "missingFiles", "unknown" -> torrent.setStatus(7);
+                    default -> torrent.setStatus(0);
+                }
+                torrent.setProgressPercent((int) (torrent.getProgress() * 100));
+                if(torrent.getStatus() < 3){
+                    hashTorrents.put(torrent.getHash(),torrent);
+                    continue;
+                }
+                if(!hashTorrents.containsKey(torrent.getHash())){
+                    hashTorrents.put(torrent.getHash(),torrent);
+                }
+                Torrent tmp2 = hashTorrents.get(torrent.getHash());
+                if(tmp2.getStatus() < 3 && torrent.getStatus() == 3){
+                    hashTorrents.put(torrent.getHash(),torrent);
+                    tmp2 = torrent;
+                }
+                Torrent now = tmp2;
+                if(now.getStatus() == 3){
+                    now.setUploaded(0L);
+                    now.setStatus(4);
+                    try (Stream<Path> walk = Files.walk(Paths.get(torrent.getContent_path()))) {
+                        walk.filter(Files::isRegularFile).forEach(path ->  {
+                            String[] cpath = path.getParent().toString().split("\\\\");
+                            String prefix = cpath.length >= 3 ? cpath[2] : "";
+                            MyFile myFile = null;
+                            try {
+                                myFile = new MyFile(prefix,path,4, Files.size(path));
+                            } catch (IOException e) {
+                                log.error(e.getMessage());
+                            }
+                            now.getFiles().add(myFile);
+                        });
+                    }
+                    now.getUnCompletedCnt().set(now.getFiles().size());
+                    torrents.add(now);
+                }else if(now.getStatus() >= 4 && now.getStatus() < 6){
                     if(now.getUnCompletedCnt().get() == 0){
                         q.addAll(now.getFiles());
                         rem.add(now.getHash());
@@ -97,32 +136,15 @@ public class qBittorrentTask {
                         }
                         torrents.add(now);
                     }
-                }else{
-                    try (Stream<Path> walk = Files.walk(Paths.get(torrent.getContent_path()))) {
-                        walk.filter(Files::isRegularFile).forEach(path ->  {
-                            String[] cpath = path.getParent().toString().split("\\\\");
-                            String prefix = cpath.length >= 3 ? cpath[2] : "";
-                            MyFile myFile = null;
-                            try {
-                                myFile = new MyFile(prefix,path,4, Files.size(path));
-                            } catch (IOException e) {
-                                log.error(e.getMessage());
-                            }
-                            torrent.getFiles().add(myFile);
-                        });
-                    }
-                    torrent.setUploaded(0L);
-                    torrent.setStatus(4);
-                    torrent.getUnCompletedCnt().set(torrent.getFiles().size());
-                    hashTorrents.put(torrent.getHash(),torrent);
-                    torrents.add(torrent);
+                }else if(now.getStatus() == 7){
+                    now.setStatus(4);
+                    torrents.add(now);
                 }
             }
             if(!rem.isEmpty()){
-                String cookie = qbt.login();
                 qbt.deleteTorrents(cookie,rem);
-                qbt.logout(cookie);
             }
+            qbt.logout(cookie);
             if(!torrents.isEmpty()){
                 os.uploadFiles(torrents);
             }
