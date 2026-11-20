@@ -100,7 +100,7 @@ public class qBittorrentTask {
                     }
                     now.getUnCompletedCnt().set(now.getFiles().size());
                     torrents.add(now);
-                }else if(now.getStatus() >= 4 && now.getStatus() < 6){
+                }else if(now.getStatus() == 4 || now.getStatus() == 5 || now.getStatus() == 8){
                     if(now.getUnCompletedCnt().get() == 0){
                         q.addAll(now.getFiles());
                         rem.add(now.getHash());
@@ -112,11 +112,15 @@ public class qBittorrentTask {
                     }else{
                         double tspeed = 0;
                         int uploading = 0;
+                        int failed = 0;
                         for(MyFile file : now.getFiles()){
                             file.setName(file.getPath().getFileName().toString());
                             long time = System.currentTimeMillis();
-                            if(file.getStatus() == 4 || file.getStatus() == 7){
+                            if(file.getStatus() == 4 || file.getStatus() == 8){
                                 file.setSpeed(0L);
+                                if(file.getStatus() == 8){
+                                    failed++;
+                                }
                             }else if(file.getStatus() == 5){
                                 double speed = (double) file.getSentBytes() * 1000 / (time - file.getStartTime());
                                 file.setSpeed((long) speed);
@@ -129,16 +133,13 @@ public class qBittorrentTask {
                         now.setProgressPercent((int) (now.getUploaded() * 100 / now.getTotal_size()));
                         now.setUpspeed(-1L);
                         if(uploading == 0){
-                            now.setStatus(4);
+                            now.setStatus(failed > 0 ? 8 : 4);
                         }else{
                             now.setUpspeed((long) tspeed);
                             now.setStatus(5);
                         }
                         torrents.add(now);
                     }
-                }else if(now.getStatus() == 7){
-                    now.setStatus(4);
-                    torrents.add(now);
                 }
             }
             if(!rem.isEmpty()){

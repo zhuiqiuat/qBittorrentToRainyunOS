@@ -39,7 +39,7 @@ public class RainyunOSUtils {
     public void uploadFiles(List<Torrent> torrents){
         for(Torrent torrent : torrents){
             for(MyFile file : torrent.getFiles()){
-                if(file.getStatus() != 4 && file.getStatus() != 7){
+                if(file.getStatus() != 4 && file.getStatus() != 8){
                     continue;
                 }
                 if(cnt < 5){
@@ -67,6 +67,7 @@ public class RainyunOSUtils {
             public void transferInitiated(Context.TransferInitiated context) {
                 log.info("{} 开始上传",finalKey);
                 file.setStartTime(System.currentTimeMillis());
+                torrent.setStatus(5);
                 if(file.getStatus() != 5){
                     cnt++;
                     file.setStatus(5);
@@ -98,7 +99,8 @@ public class RainyunOSUtils {
             public void transferFailed(Context.TransferFailed context) {
                 cnt--;
                 torrent.setUploaded(torrent.getUploaded() - file.getSentBytes());
-                file.setStatus(7);
+                file.setStatus(8);
+                torrent.setStatus(8);
                 file.setProgress(0);
                 file.setSentBytes(0L);
                 log.error("{} 上传失败,将在 1 秒内重试",finalKey);

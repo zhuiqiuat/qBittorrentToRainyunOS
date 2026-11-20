@@ -43,6 +43,8 @@ public class TorrentServiceImpl implements TorrentService {
 
     @Override
     public Collection<Torrent> getUploadList() {
-        return qbtt.getHashTorrents().values().stream().filter(torrent -> torrent.getStatus() == 5).toList();
+        return qbtt.getHashTorrents().values().stream()
+                .filter(torrent -> torrent.getStatus() == 5 || torrent.getStatus() == 8)
+                .toList();
     }
 }
