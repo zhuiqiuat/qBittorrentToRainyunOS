@@ -20,6 +20,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Component
@@ -28,7 +29,7 @@ public class RainyunOSUtils {
     @Autowired
     private RainyunConfig config;
 
-    private int cnt = 0;
+    private final AtomicInteger cnt = new AtomicInteger(0);
 
     public S3AsyncClient connect(){
         return S3AsyncClient.builder().region(Region.CN_NORTH_1).credentialsProvider(StaticCredentialsProvider.create(
@@ -42,7 +43,7 @@ public class RainyunOSUtils {
                 if(file.getStatus() != 4 && file.getStatus() != 8){
                     continue;
                 }
-                if(cnt < 5){
+                if(cnt.get() < 5){
                     upload(file,torrent);
                 }
             }
@@ -61,6 +62,7 @@ public class RainyunOSUtils {
         }
         key += name;
         String finalKey = key;
+        cnt.incrementAndGet();
         FileUpload fileUpload = s3tm.uploadFile(b -> b.putObjectRequest(r -> r.bucket(config.getBucketname())
                 .key(finalKey)).source(file.getPath()).addTransferListener(new TransferListener() {
             @Override
@@ -69,7 +71,6 @@ public class RainyunOSUtils {
                 file.setStartTime(System.currentTimeMillis());
                 torrent.setStatus(5);
                 if(file.getStatus() != 5){
-                    cnt++;
                     file.setStatus(5);
                 }
             }
@@ -91,13 +92,13 @@ public class RainyunOSUtils {
                 log.info("{} 上传成功",finalKey);
                 torrent.getUnCompletedCnt().decrementAndGet();
                 file.setStatus(6);
-                cnt--;
+                cnt.decrementAndGet();
                 s3tm.close();
             }
 
             @Override
             public void transferFailed(Context.TransferFailed context) {
-                cnt--;
+                cnt.decrementAndGet();
                 torrent.setUploaded(torrent.getUploaded() - file.getSentBytes());
                 file.setStatus(8);
                 torrent.setStatus(8);
