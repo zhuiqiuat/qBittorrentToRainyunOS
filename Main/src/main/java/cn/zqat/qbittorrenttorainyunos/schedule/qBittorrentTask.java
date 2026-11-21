@@ -35,28 +35,11 @@ public class qBittorrentTask {
     private RecordService recordService;
 
     private Map<String,Torrent> hashTorrents = new ConcurrentHashMap<>();
-    private Queue<MyFile> q = new ArrayDeque<>();
 
     @Scheduled(fixedDelay = 1000)
     public void task(){
         try {
             String cookie = qbt.login();
-            if(!q.isEmpty()){
-                Queue<MyFile> fail = new ArrayDeque<>();
-                for(MyFile file : q){
-                    Files.deleteIfExists(file.getPath());
-                    boolean deleted = Files.notExists(file.getPath());
-                    if (deleted){
-                        log.debug("本地文件 {} 删除成功",file.getPath().toAbsolutePath().toAbsolutePath());
-                    }else{
-                        log.error("本地文件 {} 删除失败",file.getPath().toAbsolutePath().toAbsolutePath());
-                        log.error("失败原因 未知");
-                        fail.add(file);
-                    }
-                }
-                q.clear();
-                q = fail;
-            }
             List<Torrent> tmp = qbt.getTorrents("all",cookie);
             List<Torrent> torrents = new ArrayList<>();
             List<String> rem = new ArrayList<>();
@@ -101,13 +84,14 @@ public class qBittorrentTask {
                     if(now.getFiles().isEmpty()){
                         log.error("文件夹 {} 下没有文件，直接跳过",now.getContent_path());
                         now.setStatus(6);
+                        rem.add(now.getHash());
+                        hashTorrents.remove(now.getHash());
                         continue;
                     }
                     now.getUnCompletedCnt().set(now.getFiles().size());
                     torrents.add(now);
                 }else if(now.getStatus() == 4 || now.getStatus() == 5 || now.getStatus() == 8){
                     if(now.getUnCompletedCnt().get() == 0){
-                        q.addAll(now.getFiles());
                         rem.add(now.getHash());
                         now.setSize(now.getTotal_size());
                         now.setStatus(6);
@@ -148,7 +132,7 @@ public class qBittorrentTask {
                 }
             }
             if(!rem.isEmpty()){
-                qbt.deleteTorrents(cookie,rem);
+                qbt.deleteTorrents(cookie,rem,true);
             }
             qbt.logout(cookie);
             if(!torrents.isEmpty()){

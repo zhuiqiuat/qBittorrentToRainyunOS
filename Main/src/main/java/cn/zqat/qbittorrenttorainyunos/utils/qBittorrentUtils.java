@@ -83,7 +83,7 @@ public class qBittorrentUtils {
         return torrentList;
     }
 
-    public void deleteTorrents(String cookie,List<String> hashes) throws IOException {
+    public void deleteTorrents(String cookie,List<String> hashes,boolean deleteFiles) throws IOException {
         String nowurl = config.getUrl() + "/torrents/delete";
         StringBuilder h = new StringBuilder();
         for(int i = 0;i < hashes.size();i++){
@@ -95,7 +95,7 @@ public class qBittorrentUtils {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             List<BasicNameValuePair> list = new ArrayList<>();
             list.add(new BasicNameValuePair("hashes",h.toString()));
-            list.add(new BasicNameValuePair("deleteFiles",String.valueOf(false)));
+            list.add(new BasicNameValuePair("deleteFiles",String.valueOf(deleteFiles)));
             UrlEncodedFormEntity entity = new UrlEncodedFormEntity(list);
             ClassicHttpRequest getR = ClassicRequestBuilder.post(nowurl).setEntity(entity).build();
             getR.addHeader("Cookie",cookie);
