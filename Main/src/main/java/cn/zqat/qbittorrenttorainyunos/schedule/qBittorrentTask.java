@@ -12,12 +12,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -66,8 +68,7 @@ public class qBittorrentTask {
                 }
                 Torrent now = tmp2;
                 if(now.getStatus() == 3){
-                    now.setUploaded(0L);
-                    now.setStatus(4);
+                    AtomicInteger failed = new AtomicInteger();
                     try (Stream<Path> walk = Files.walk(Paths.get(torrent.getContent_path()))) {
                         walk.filter(Files::isRegularFile).forEach(path ->  {
                             String[] cpath = path.getParent().toString().split("\\\\");
@@ -76,10 +77,26 @@ public class qBittorrentTask {
                             try {
                                 myFile = new MyFile(prefix,path,4, Files.size(path));
                             } catch (IOException e) {
+                                failed.getAndIncrement();
+                                log.error("文件遍历时出错");
                                 log.error(e.getMessage());
                             }
-                            now.getFiles().add(myFile);
+                            if(myFile != null){
+                                now.getFiles().add(myFile);
+                            }
                         });
+                    }catch (IOException | UncheckedIOException e){
+                        log.error("种子 {} 文件读取出错，已跳过",now.getName());
+                        log.error(e.getMessage());
+                        now.getFiles().clear();
+                        now.setStatus(3);
+                        continue;
+                    }
+                    if(failed.get() > 0){
+                        log.error("种子 {} 文件读取出错，已跳过",now.getName());
+                        now.getFiles().clear();
+                        now.setStatus(3);
+                        continue;
                     }
                     if(now.getFiles().isEmpty()){
                         log.error("文件夹 {} 下没有文件，直接跳过",now.getContent_path());
@@ -88,6 +105,8 @@ public class qBittorrentTask {
                         hashTorrents.remove(now.getHash());
                         continue;
                     }
+                    now.setUploaded(0L);
+                    now.setStatus(4);
                     now.getUnCompletedCnt().set(now.getFiles().size());
                     torrents.add(now);
                 }else if(now.getStatus() == 4 || now.getStatus() == 5 || now.getStatus() == 8){
