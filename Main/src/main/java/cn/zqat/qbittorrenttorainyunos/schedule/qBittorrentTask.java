@@ -98,6 +98,11 @@ public class qBittorrentTask {
                             now.getFiles().add(myFile);
                         });
                     }
+                    if(now.getFiles().isEmpty()){
+                        log.error("文件夹 {} 下没有文件，直接跳过",now.getContent_path());
+                        now.setStatus(6);
+                        continue;
+                    }
                     now.getUnCompletedCnt().set(now.getFiles().size());
                     torrents.add(now);
                 }else if(now.getStatus() == 4 || now.getStatus() == 5 || now.getStatus() == 8){
