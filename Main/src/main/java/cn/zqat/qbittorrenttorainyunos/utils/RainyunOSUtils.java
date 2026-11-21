@@ -6,20 +6,12 @@ import cn.zqat.qbittorrenttorainyunos.pojo.Torrent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3AsyncClient;
-import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.transfer.s3.S3TransferManager;
 import software.amazon.awssdk.transfer.s3.model.FileUpload;
 import software.amazon.awssdk.transfer.s3.progress.TransferListener;
 import software.amazon.awssdk.transfer.s3.progress.TransferProgressSnapshot;
 
-import java.net.URI;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
@@ -27,15 +19,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RainyunOSUtils {
 
     @Autowired
+    private S3TransferManager s3TransferManager;
+
+    @Autowired
     private RainyunConfig config;
 
     private final AtomicInteger cnt = new AtomicInteger(0);
-
-    public S3AsyncClient connect(){
-        return S3AsyncClient.builder().region(Region.CN_NORTH_1).credentialsProvider(StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(config.getAccesskey(),config.getSecretkey()))).endpointOverride(URI.create(config.getEndpoint())).
-                serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build();
-    }
 
     public void uploadFiles(List<Torrent> torrents){
         for(Torrent torrent : torrents){
@@ -51,9 +40,6 @@ public class RainyunOSUtils {
     }
 
     public void upload(MyFile file,Torrent torrent){
-        S3AsyncClient s3 = connect();
-        ExecutorService executor = Executors.newFixedThreadPool(16);
-        S3TransferManager s3tm = S3TransferManager.builder().s3Client(s3).executor(executor).build();
         String path = file.getPrefix();
         String name = file.getPath().getFileName().toString();
         String key = "";
@@ -63,7 +49,7 @@ public class RainyunOSUtils {
         key += name;
         String finalKey = key;
         cnt.incrementAndGet();
-        FileUpload fileUpload = s3tm.uploadFile(b -> b.putObjectRequest(r -> r.bucket(config.getBucketname())
+        FileUpload fileUpload = s3TransferManager.uploadFile(b -> b.putObjectRequest(r -> r.bucket(config.getBucketname())
                 .key(finalKey)).source(file.getPath()).addTransferListener(new TransferListener() {
             @Override
             public void transferInitiated(Context.TransferInitiated context) {
@@ -93,7 +79,6 @@ public class RainyunOSUtils {
                 torrent.getUnCompletedCnt().decrementAndGet();
                 file.setStatus(6);
                 cnt.decrementAndGet();
-                s3tm.close();
             }
 
             @Override
