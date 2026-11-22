@@ -281,4 +281,4 @@ curl -s http://127.0.0.1:8081/overview -H "token: $TOKEN"
 
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 zhuiqiuat
