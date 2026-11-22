@@ -115,8 +115,8 @@ public class qBittorrentTask {
                         now.setSize(now.getTotal_size());
                         now.setStatus(6);
                         now.setUpdateTime(LocalDateTime.now());
-                        recordService.add(now);
                         hashTorrents.remove(now.getHash());
+                        recordService.add(now);
                     }else{
                         double tspeed = 0;
                         int uploading = 0;
