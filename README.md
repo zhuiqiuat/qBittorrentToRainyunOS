@@ -97,7 +97,17 @@ VALUES ('admin', '0192023a7bbd73250516f069df18b500', NULL, NULL);
 
 ### 2. 配置
 
-所有配置项都支持环境变量覆盖，本地不设置也能用默认值启动（默认指向 `127.0.0.1`）。
+所有配置项都支持环境变量覆盖，默认值指向本机（MySQL `127.0.0.1:3306`、qBittorrent `127.0.0.1:8080`）。
+
+**但首次启动必须先配置 S3 凭据**：`S3Config` 里的 `S3AsyncClient` 是上下文初始化时就创建的单例 Bean，
+密钥为空会直接启动失败：
+
+```
+BeanCreationException: Error creating bean with name 's3AsyncClient'
+Factory method 's3AsyncClient' threw exception with message: Access key ID cannot be blank.
+```
+
+数据库同理——MySQL 连不上时 Hikari 会在启动阶段快速失败。
 
 真实凭据请放在 `application-local.yaml`（已在 `.gitignore` 中）。注意：Spring Boot 只在对应 profile 激活时
 才加载 `application-{profile}.yaml`，所以启动时要带上 profile：
