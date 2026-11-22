@@ -5,6 +5,10 @@
 
 > 本仓库是**后端 API 服务**，前端为独立项目，未包含在内。
 
+## 界面预览
+
+![qBittorrentToRainyunOS 首页概览](assets/overview.jpg)
+
 ## 解决什么问题
 
 用 qBittorrent 挂机下载的场景里，常见流程是「下完 → 手动找文件 → 上传网盘 → 删本地」。
