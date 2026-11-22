@@ -1,6 +1,6 @@
 # qBittorrentToRainyunOS
 
-轮询 qBittorrent 的种子状态，把**下载完成**的种子自动分片上传到 S3 协议兼容的对象存储（Rainyun / MinIO / AWS S3），
+轮询 qBittorrent 的种子状态，把**下载完成**的种子自动上传到 S3 协议兼容的对象存储（Rainyun / MinIO / AWS S3），
 并提供下载进度、上传进度、传输记录三类查询接口。
 
 > 本仓库是**后端 API 服务**，前端为独立项目，未包含在内。
@@ -9,16 +9,18 @@
 
 用 qBittorrent 挂机下载的场景里，常见流程是「下完 → 手动找文件 → 上传网盘 → 删本地」。
 这个服务把这段全自动化：种子下完的那一刻就被识别出来，文件扫描后上传到对象存储，
-进度可查、历史可查，完成后清理本地文件并从 qBittorrent 移除任务。
+进度可查、历史可查，归档完成后由 qBittorrent 一并删除种子与本地文件。
 
 ## 功能
 
 - **状态轮询**：每秒从 qBittorrent WebUI API 拉取全部种子，按 state 归类为下载中 / 已完成 / 异常
-- **自动归档**：种子进入「已完成」后扫描 `content_path` 下的文件，逐个提交到 S3（`S3TransferManager` 负责分片与重试）
+- **自动归档**：种子进入「已完成」后扫描 `content_path` 下的文件，逐个提交到 S3（当前为单次 `PutObject`，见「已知问题」）
 - **进度上报**：文件级「已传字节 / 总字节 / 百分比 / 实时速度」，种子级汇总进度与总速度
+- **失败重试**：单个文件上传失败标记为失败态，下一轮自动重试；种子级带汇总进度与总速度
+- **异常任务跳过**：目录为空直接清理；文件读取失败（权限、掉盘、`metaDL` 无元数据）保留任务并在下一轮重试，不会误删数据
+- **清理托管**：归档完成后调用 qBittorrent 的 `deleteFiles=true` 删除种子与文件，服务本身不做破坏性文件操作
 - **传输记录**：归档完成后写入 MySQL，提供历史查询
 - **鉴权**：JWT + 库内 token 比对，实现单端登录（新登录会顶掉旧会话）
-- **快速失败**：Hikari 连接超时 5s，避免定时任务线程被数据库拖死
 
 ## 技术栈
 
@@ -27,7 +29,7 @@
 | 语言 / 运行时 | Java 25 |
 | 框架 | Spring Boot 4.0.7（Web MVC + Scheduling） |
 | 持久层 | MyBatis 4.0.1 + MySQL 8 |
-| 对象存储 | AWS SDK for Java v2（`s3` + `s3-transfer-manager`） |
+| 对象存储 | AWS SDK for Java v2（`s3` + `s3-transfer-manager`），客户端与 TransferManager 由 `S3Config` 以单例 Bean 管理 |
 | HTTP 客户端 | Apache HttpClient 5（调用 qBittorrent API） |
 | JSON | Gson |
 | 认证 | jjwt 0.13（HS256） |
@@ -40,9 +42,10 @@ flowchart LR
     Q[qBittorrent WebUI API] -->|每 1s: /torrents/info?filter=all| S[Scheduler<br/>qBittorrentTask]
     S -->|下载阶段| M1[内存快照<br/>hash → Torrent]
     S -->|进入已完成| R[注册上传任务<br/>扫描 content_path]
-    R --> U[S3TransferManager<br/>并发提交上限 5]
-    U -->|分片上传| O[(S3 兼容对象存储)]
+    R --> U[S3TransferManager 单例<br/>并发提交上限 5]
+    U -->|PutObject 上传| O[(S3 兼容对象存储)]
     S -->|全部传完| DB[(MySQL: record)]
+    S -->|归档完成: deleteFiles=true| Q
     C[客户端] -->|token| API[Controller]
     API -->|读取| M1
 ```
@@ -56,7 +59,7 @@ Main/src/main/java/cn/zqat/qbittorrenttorainyunos
 ├── schedule         # qBittorrentTask：轮询与状态机
 ├── utils            # qBittorrentUtils / RainyunOSUtils / JWTUtils / SizeUtils
 ├── interceptor      # 全局鉴权
-├── config           # 拦截器注册 / @ConfigurationProperties
+├── config           # S3Config（客户端 Bean）/ 拦截器注册 / @ConfigurationProperties
 ├── mapper           # MyBatis Mapper（注解 + XML）
 ├── pojo             # 实体与 DTO
 └── exception        # 全局异常处理
@@ -85,12 +88,25 @@ CREATE TABLE record (
     size        BIGINT,
     update_time DATETIME
 );
+
+-- 初始账号：password 列存的是明文密码的 MD5（项目没有注册接口，必须先插一条）
+-- 下面这条对应明文 admin123，可自己生成：printf 'admin123' | md5sum
+INSERT INTO users (username, password, email, avatar)
+VALUES ('admin', '0192023a7bbd73250516f069df18b500', NULL, NULL);
 ```
 
 ### 2. 配置
 
 所有配置项都支持环境变量覆盖，本地不设置也能用默认值启动（默认指向 `127.0.0.1`）。
-真实凭据请放在 `application-local.yaml`（已在 `.gitignore` 中）。
+
+真实凭据请放在 `application-local.yaml`（已在 `.gitignore` 中）。注意：Spring Boot 只在对应 profile 激活时
+才加载 `application-{profile}.yaml`，所以启动时要带上 profile：
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+# 或
+java -jar target/qBittorrentToRainyunOS-1.1.0.jar --spring.profiles.active=local
+```
 
 | 环境变量 | 默认值 | 说明 |
 |---|---|---|
@@ -130,7 +146,7 @@ mvn -DskipTests package && java -jar target/qBittorrentToRainyunOS-1.1.0.jar
 |---|---|---|---|
 | POST | `/login` | 否 | 用户名密码换取 token |
 | GET | `/overview` | 是 | 活跃下载数、活跃上传数、上传及上传失败列表 |
-| GET | `/download` | 是 | 全部种子及下载状态 |
+| GET | `/download` | 是 | 内存中的全部种子条目（含已进入上传阶段的，`status` 可能为 0–8） |
 | GET | `/upload` | 是 | 正在上传及上传失败的种子 |
 | GET | `/record` | 是 | 历史传输记录 |
 
@@ -153,13 +169,25 @@ curl -s http://127.0.0.1:8081/overview -H "token: $TOKEN"
 | 值 | 含义 | 对应 qBittorrent state |
 |---|---|---|
 | 0 | 未知 / 其它 | 未映射的状态 |
-| 1 | 等待、暂停 | `stalledDL` `pausedDL` `queuedDL` |
+| 1 | 等待 / 暂停下载 | `stalledDL` `queuedDL`（4.x 还有 `pausedDL`） |
 | 2 | 下载中 | `downloading` `forcedDL` |
 | 3 | 已完成（做种中） | `uploading` `stalledUP` `forcedUP` `queuedUP` `checkingUP` `stoppedUP` |
 | 7 | 下载失败 | `error` `missingFiles` `unknown` |
 
+> qBittorrent 5.0+ 把 `pausedDL` 改名为 `stoppedDL`，当前映射里没有单独列出，会落到 `0`（未映射）。
+
 上传阶段（`Torrent.status`）：`4` 待上传 / `5` 上传中 / `6` 已完成（已写入 record） / `8` 上传失败（下一轮重试）。
 文件级（`MyFile.status`）：`4` 等待 / `5` 上传中 / `6` 完成 / `8` 上传失败（下一轮重试）。
+
+> `/download` 与 `/upload` 读的是同一份内存快照：`/download` 返回全部条目，`/upload` 只筛 `5` / `8`。
+> 因此 `/download` 的返回里也会出现 `4` / `5` / `8`，前端按 `status` 分组即可。
+
+状态流转：
+
+```
+下载 0/1/2 ──进入做种──▶ 注册 3 ──扫描完成──▶ 待传 4 ⇄ 上传中 5 ──全部完成──▶ 6 落库 + 删除种子与文件
+                                              └──有文件失败──▶ 8 ──下一轮──▶ 4
+```
 
 ## 设计要点与踩过的坑
 
@@ -181,7 +209,16 @@ curl -s http://127.0.0.1:8081/overview -H "token: $TOKEN"
 早期写成 `if (now.getStatus() == 3)`，而 `now` 可能是上一轮的下载快照（status 0/1/2），条件恒不成立，
 种子下完永远不上传。改成 `status < 4`（还没进上传阶段）之后，下载 → 完成的状态迁移才真正打通。
 
-**5. 为什么不改成长轮询 / WebSocket？**
+**5. 破坏性操作交给产生数据的服务**
+早期是服务自己 `Files.deleteIfExists` 遍历删除，空目录、权限不足、路径不存在都会各自出错，还得自己维护重试队列。
+现在只调 `torrents/delete?deleteFiles=true`，让 qBittorrent 按它自己的 `content_path` 删——
+删除范围由数据源定义，服务不再持有「要删哪些路径」这份状态。
+
+**6. 「空」和「读失败」必须能区分**
+目录为空是正常结束（清理种子即可）；文件读取失败是故障（保留任务、下一轮重试）。
+两者混在一起时，默认值兜底会把故障伪装成正常跳过，导致文件被删而上传从未发生。
+
+**7. 为什么不改成长轮询 / WebSocket？**
 数据源（qBittorrent WebUI API）本身没有推送能力，只能轮询；1s 的间隔对单机场景足够，
 真正的优化方向是 `sync/maindata` 的 `rid` 增量同步（见 Roadmap）。
 
@@ -194,18 +231,33 @@ curl -s http://127.0.0.1:8081/overview -H "token: $TOKEN"
 
 **2. 任务状态只存在内存**
 `hashTorrents` 是 `ConcurrentHashMap`，进程重启后全部丢失：已在传的文件要从头开始，已完成的种子会被重新识别。
-修复方向：状态落库 + 启动恢复 + 利用分片上传的 `uploadId` 做断点续传。
+修复方向：状态落库 + 启动恢复 + 利用分片上传的 `uploadId` 做断点续传（需先解决 #4 的 multipart 问题）。
 
-**3. 并发上传上限是近似值**
-用 `int cnt` 计数实现「同时最多 5 个文件」，在多个上传回调线程里自增自减不是原子的，
-实际并发可能超过上限。修复方向：换成 `Semaphore`。
+**3. 失败重试没有退避**
+文件上传失败后下一轮（约 1s）立即重试，持续失败时会以每秒一次的频率重试。
+修复方向：指数退避 + 最大重试次数，超过阈值转人工处理。
+
+**4. 上传没有走 multipart（分片）**
+
+`S3TransferManager.uploadFile` 默认走单次 `PutObject`：实测 10 MB 与 128 MB 的文件都只发出一次
+`PUT /{bucket}/{key}`，没有 `CreateMultipartUpload`。原因是 `S3AsyncClient` 构建时没有开启
+`multipartEnabled(true)`——`GenericS3TransferManager` 内部用 `isS3ClientMultipartEnabled` 判断是否分片。
+
+影响：单次 `PutObject` 上限 5 GB；失败要整文件重传；也无法用 `uploadId` 做断点续传。
+修复方向：`S3AsyncClient.builder().multipartEnabled(true)`（可再配 `multipartConfiguration` 调分片阈值），
+或改用 CRT 客户端。
+
+**5. 单实例设计**
+上传并发上限（5）是进程内计数，状态也在内存；多实例部署时各实例独立计数，会出现重复上传。
+修复方向：状态与并发控制外置（Redis 分布式锁 / 数据库抢占）。
 
 ## Roadmap
 
+- [ ] **启用 multipart 上传**：`multipartEnabled(true)`，为大文件分片与断点续传打底
 - [ ] **状态持久化**：上传任务状态落库（`upload_task` 表），重启后恢复并支持断点续传
 - [ ] **降低轮询开销**：连接池复用 + cookie 缓存 + `sync/maindata?rid` 增量同步
+- [ ] **失败退避**：指数退避 + 最大重试次数
 - [ ] **密码存储**：MD5 → BCrypt
-- [ ] **并发控制**：`Semaphore` 替代计数器，保证并发上限严格生效
 - [ ] **S3 key 策略可配置**：保持子目录结构 / 平铺
 - [ ] **传输记录分页**
 - [ ] **单元测试与集成测试**（当前为空）
