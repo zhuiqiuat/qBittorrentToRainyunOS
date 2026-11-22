@@ -107,7 +107,9 @@ BeanCreationException: Error creating bean with name 's3AsyncClient'
 Factory method 's3AsyncClient' threw exception with message: Access key ID cannot be blank.
 ```
 
-数据库同理——MySQL 连不上时 Hikari 会在启动阶段快速失败。
+**数据库的行为相反**：Spring Boot 用无参构造 + setter 建 `HikariDataSource`，启动时不建立任何连接，
+应用照常起来；第一次查询（登录、写 record）才失败。`hikari.connection-timeout: 5000` 是等待**上限**——
+端口拒绝会立刻报错，网络不通才会等满 5 秒。这也正是配这个值的原因：避免调度线程卡在连库上。
 
 真实凭据请放在 `application-local.yaml`（已在 `.gitignore` 中）。注意：Spring Boot 只在对应 profile 激活时
 才加载 `application-{profile}.yaml`，所以启动时要带上 profile：
