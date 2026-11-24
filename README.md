@@ -279,7 +279,7 @@ mvn test
 
 | 测试类 | 覆盖点 |
 |---|---|
-| `qBittorrentTaskTest` | S3 key 前缀：目录型种子 / 单文件种子 / 路径不存在 / 路径末尾带分隔符 |
+| `qBittorrentTaskTest` | S3 key 前缀直接取路径组件第 3 项，覆盖 Unix/Windows 分隔符、嵌套目录和路径归一化 |
 | `TorrentServiceImplTest` | 活跃下载数、活跃上传数、`/upload` 只筛 `5`/`8` |
 | `GlobalInterceptorTest` | 缺 token / 非法 token / 被顶掉的旧 token / 有效 token 四个分支 |
 | `JWTUtilsTest` | 签发与解析 claim、过期 token、畸形 token |
@@ -330,12 +330,12 @@ Spring Data Redis 4 的 hash 命令可以一条命令「读 + 续期」/「写 +
 
 ## 已知问题
 
-**1. S3 key 固定平铺种子内的目录**
-目录型种子的 key 前缀取 `content_path` 的目录名（`Show/01.mp4`），种子内部的子目录不保留
-（`Show/Season 1/01.mp4` 仍上传为 `Show/01.mp4`），所以不同子目录里的同名文件会互相覆盖。
-单文件种子（`content_path` 是文件）前缀为空，文件直接落在桶根目录；`content_path` 不存在时会在
-`Files.walk` 阶段抛 `NoSuchFileException`，任务保留并下一轮重试，不会上传。
-修复方向：改用「文件相对 `content_path` 的路径」生成 key，并做成可配置策略（保持子目录 / 平铺）。
+**1. S3 key 完全依赖 qBittorrent 的 `content_path`**
+S3 key 直接取文件路径组件第 3 项作为文件夹，例如 `/downloads/xxx/movie.mp4` 和
+`C:\downloads\xxx\movie.mp4` 都使用 `xxx`，再拼接文件名。内部层级不进入 key。
+目录层数不足时没有可用前缀。`content_path` 不存在时会在 `Files.walk` 阶段抛
+`NoSuchFileException`，任务保留并下一轮重试，不会上传。
+修复方向：增加可配置的全局 key 根目录，以及可选的平铺模式。
 
 **2. 任务状态只存在内存**
 `hashTorrents` 是 `ConcurrentHashMap`，进程重启后全部丢失：已在传的文件要从头开始，已完成的种子会被重新识别。
