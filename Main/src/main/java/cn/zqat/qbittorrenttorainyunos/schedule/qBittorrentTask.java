@@ -70,12 +70,11 @@ public class qBittorrentTask {
                 if(now.getStatus() == 3){
                     AtomicInteger failed = new AtomicInteger();
                     Path contentRoot = Paths.get(torrent.getContent_path());
-                    String objectKeyPrefix = getObjectKeyPrefix(contentRoot);
                     try (Stream<Path> walk = Files.walk(contentRoot)) {
                         walk.filter(Files::isRegularFile).forEach(path ->  {
                             MyFile myFile = null;
                             try {
-                                myFile = new MyFile(objectKeyPrefix,path,4, Files.size(path));
+                                myFile = new MyFile(getObjectKeyPrefix(path), path, 4, Files.size(path));
                             } catch (IOException e) {
                                 failed.getAndIncrement();
                                 log.error("文件遍历时出错");
@@ -162,12 +161,19 @@ public class qBittorrentTask {
         }
     }
 
-    static String getObjectKeyPrefix(Path contentRoot) {
-        Path rootName = contentRoot.getFileName();
-        if (rootName == null || !Files.isDirectory(contentRoot)) {
+    static String getObjectKeyPrefix(Path file) {
+        Path parent = file.getParent();
+        if (parent == null) {
             return "";
         }
-        return rootName.toString();
+
+        String absoluteParent = parent.toAbsolutePath().normalize().toString();
+        return getObjectKeyPrefix(absoluteParent);
+    }
+
+    static String getObjectKeyPrefix(String absoluteDirectory) {
+        String[] pathParts = absoluteDirectory.replace('\\', '/').split("/");
+        return pathParts.length >= 3 ? pathParts[2] : "";
     }
 
 }

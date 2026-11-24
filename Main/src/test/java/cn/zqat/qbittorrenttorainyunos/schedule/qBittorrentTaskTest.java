@@ -1,10 +1,7 @@
 package cn.zqat.qbittorrenttorainyunos.schedule;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,30 +9,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class qBittorrentTaskTest {
 
     @Test
-    void usesTorrentDirectoryNameWithoutNestedDirectories(@TempDir Path tempDir) throws IOException {
-        Path contentRoot = Files.createDirectories(tempDir.resolve("Show"));
-        Path nestedDirectory = Files.createDirectories(contentRoot.resolve("Season 1").resolve("Disc 1"));
-        Files.writeString(nestedDirectory.resolve("01.mp4"), "video");
+    void usesThirdLevelFolderForSingleFileTorrent() {
+        Path file = Path.of("/downloads/xxx/movie.mp4");
 
-        assertEquals("Show", qBittorrentTask.getObjectKeyPrefix(contentRoot));
+        assertEquals("xxx", qBittorrentTask.getObjectKeyPrefix(file));
     }
 
     @Test
-    void usesEmptyPrefixForSingleFileTorrent(@TempDir Path tempDir) throws IOException {
-        Path contentRoot = Files.writeString(tempDir.resolve("movie.mp4"), "video");
+    void usesThirdLevelFolderWithoutAddingNestedDirectories() {
+        Path file = Path.of("/downloads/xxx/Season 1/Disc 1/01.mp4");
 
-        assertEquals("", qBittorrentTask.getObjectKeyPrefix(contentRoot));
+        assertEquals("xxx", qBittorrentTask.getObjectKeyPrefix(file));
     }
 
     @Test
-    void usesEmptyPrefixWhenContentPathDoesNotExist(@TempDir Path tempDir) {
-        assertEquals("", qBittorrentTask.getObjectKeyPrefix(tempDir.resolve("missing")));
+    void usesEmptyPrefixWhenThirdLevelFolderIsUnavailable() {
+        assertEquals("", qBittorrentTask.getObjectKeyPrefix(Path.of("/downloads/movie.mp4")));
     }
 
     @Test
-    void usesDirectoryNameEvenWhenPathHasTrailingSeparator(@TempDir Path tempDir) throws IOException {
-        Path contentRoot = Files.createDirectories(tempDir.resolve("Show"));
+    void normalizesPathBeforeSelectingThirdLevelFolder() {
+        Path file = Path.of("/downloads/xxx/Season 1/../movie.mp4");
 
-        assertEquals("Show", qBittorrentTask.getObjectKeyPrefix(Path.of(contentRoot + "/")));
+        assertEquals("xxx", qBittorrentTask.getObjectKeyPrefix(file));
+    }
+
+    @Test
+    void supportsWindowsPathSeparators() {
+        assertEquals("xxx", qBittorrentTask.getObjectKeyPrefix("D:\\downloads\\xxx"));
     }
 }
