@@ -8,4 +8,6 @@ public interface UserService {
     Result login(LoginRequest loginRequest);
 
     User getUserById(Integer id);
+
+    String getTokenById(Integer id);
 }

@@ -21,6 +21,15 @@ spring:
       maximum-pool-size: ${DB_POOL_SIZE:5}
       # 连不上时快速失败，别让定时任务线程一直卡在连接上
       connection-timeout: 5000
+  # ---- Redis（缓存）----
+  # 注意：Boot 3 起前缀是 spring.data.redis，写成 spring.redis 不报错但会被静默忽略（永远连 127.0.0.1:6379）
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      # 无密码留空即可；有密码时用 REDIS_PASSWORD 覆盖，别把真实密码写进来
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
 
 # ---- 对象存储（S3 协议兼容：Rainyun / MinIO / AWS S3 均可）----
 rainyun:

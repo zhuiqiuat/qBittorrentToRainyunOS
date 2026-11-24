@@ -7,11 +7,21 @@ import cn.zqat.qbittorrenttorainyunos.pojo.Result;
 import cn.zqat.qbittorrenttorainyunos.pojo.User;
 import cn.zqat.qbittorrenttorainyunos.service.UserService;
 import cn.zqat.qbittorrenttorainyunos.utils.JWTUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.RedisHashCommands;
+import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 @Service
+@Slf4j
 public class UserServiceImpl implements UserService {
 
     @Autowired
@@ -19,6 +29,11 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private JWTUtils jwtu;
+
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
+
+    private final Expiration expiration = Expiration.from(6, TimeUnit.HOURS);
 
     @Override
     public Result login(LoginRequest loginRequest) {
@@ -32,6 +47,7 @@ public class UserServiceImpl implements UserService {
             if(u != null && u.getPassword().equals(DigestUtils.md5DigestAsHex(password.getBytes()))){
                 String token = jwtu.getToken(u.getId(),username);
                 userMapper.updateToken(u.getId(), token);
+                updateCache(u.getId(), token);
                 return Result.suc(new LoginResult(u.getId(), u.getUsername(), u.getAvatar(), token));
             }
         }
@@ -41,5 +57,33 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserById(Integer id) {
         return userMapper.getUserById(id);
+    }
+
+    @Override
+    public String getTokenById(Integer id) {
+        HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();
+        String token = hashOperations.getAndExpire("tokens", expiration, List.of(String.valueOf(id))).getFirst();
+        if(token != null && !token.isEmpty()){
+            return token;
+        }
+
+        log.info("id {} 没有找到对应的缓存", id);
+        User user = getUserById(id);
+        if(user != null && user.getToken() != null && !user.getToken().isEmpty()){
+            token = user.getToken();
+            updateCache(id, token);
+            return token;
+        }
+        return null;
+    }
+
+    private void updateCache(Integer id, String token){
+        HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();
+        hashOperations.putAndExpire(
+                "tokens",
+                Map.of(String.valueOf(id), token),
+                RedisHashCommands.HashFieldSetOption.UPSERT,
+                expiration
+        );
     }
 }
