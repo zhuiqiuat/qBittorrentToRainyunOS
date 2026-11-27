@@ -24,11 +24,15 @@ public class S3Config {
                 .overrideConfiguration(o -> o
                         .apiCallTimeout(Duration.ofMinutes(30))
                         .apiCallAttemptTimeout(Duration.ofMinutes(5)))
+                .multipartEnabled(true)
+                .multipartConfiguration(multipart -> multipart.parallelConfiguration(parallel -> parallel.maxInFlightParts(8)))
                 .build();
     }
 
     @Bean(destroyMethod = "close")
     public S3TransferManager s3TransferManager(S3AsyncClient client) {
-        return S3TransferManager.builder().s3Client(client).build();
+        return S3TransferManager.builder()
+                .s3Client(client)
+                .build();
     }
 }
